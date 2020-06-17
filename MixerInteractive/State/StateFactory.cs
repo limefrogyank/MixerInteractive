@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MixerInteractive.State.Controls;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -18,6 +19,21 @@ namespace MixerInteractive.State
         public void SetClient(Client client)
         {
             _client = client;
+        }
+
+        public Control CreateControl(string kind, object values, Scene scene) 
+        {
+            Control control = null;
+
+            switch (kind)
+            {
+                case "button":
+                    control = new Button((ButtonData)values);
+                    break;
+
+            }
+
+            return control;
         }
     }
 }

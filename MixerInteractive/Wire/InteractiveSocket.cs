@@ -171,6 +171,8 @@ namespace MixerInteractive.Wire
 
             _state = SocketState.Connecting;
             _socket = new System.Net.WebSockets.ClientWebSocket();
+            //var options = _socket.Options;
+            //options.KeepAliveInterval()
             
             await _socket.ConnectAsync(new Uri(url), CancellationToken.None);
             _state = SocketState.Connected;
@@ -247,7 +249,7 @@ namespace MixerInteractive.Wire
 
         private Task SendPacketInnerAsync(Packet packet)
         {
-            return SendRawAsync(packet.SetSequenceNumber(++_lastSequenceNumber));
+            return SendRawAsync(packet.SetSequenceNumber(_lastSequenceNumber));
         }
 
         public Task ReplyAsync(Reply reply)

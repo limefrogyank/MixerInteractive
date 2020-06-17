@@ -1,5 +1,7 @@
 ﻿using MixerInteractive.InteractiveError;
 using MixerInteractive.Methods;
+using MixerInteractive.State;
+using MixerInteractive.State.Controls;
 using MixerInteractive.Wire;
 using System;
 using System.Collections.Generic;
@@ -37,11 +39,11 @@ namespace MixerInteractive
             this.ClientType = clientType;
             this.State = new State.State(clientType);
             this.State.SetClient(this);
-            _methodHandler.AddHandler("hello",  method =>
-            {
-                _hello.OnNext(Unit.Default);
-                return null;
-            });
+            _methodHandler.AddHandler("hello", method =>
+           {
+               _hello.OnNext(Unit.Default);
+               return null;
+           });
         }
 
         protected async Task<Client> OpenAsync(SocketOptions options)
@@ -51,6 +53,46 @@ namespace MixerInteractive
             await Socket.ConnectAsync();
             return this;
         }
+
+        public async Task<Tuple<IEnumerable<Group>, IEnumerable<Scene>>> SynchronizeStateAsync()
+        {
+            var groupsTask = SynchronizeGroupsAsync();
+            var scenesTask = SynchronizeScenesAsync();
+            await Task.WhenAll(groupsTask,scenesTask);
+
+
+            return new Tuple<IEnumerable<Group>, IEnumerable<Scene>>(groupsTask.Result, scenesTask.Result);
+        }
+
+        public async Task<IEnumerable<Group>> SynchronizeGroupsAsync()
+        {
+            var groups = await GetGroupsAsync();
+            return groups;
+        }
+
+        public async Task<IEnumerable<Group>> GetGroupsAsync()
+        {
+            var result = await ExecuteAsync("getGroups", null, false);
+            var groups = JsonSerializer.Deserialize<IEnumerable<Group>>(((JsonElement)((Dictionary<string, object>)result)["groups"]).GetRawText());
+
+            return groups;
+        }
+
+        public async Task<IEnumerable<Scene>> SynchronizeScenesAsync()
+        {
+            var scenes = await GetScenesAsync();
+            return State.SynchronizeScenes(scenes);
+        }
+
+        public async Task<IEnumerable<SceneData>> GetScenesAsync()
+        {
+            var result = await ExecuteAsync("getScenes", null, false);
+            var scenes = JsonSerializer.Deserialize<IEnumerable<SceneData>>(((JsonElement)((Dictionary<string, object>)result)["scenes"]).GetRawText());
+
+            return scenes;
+        }
+
+
 
         public Reply ProcessMethod(Method method)
         {
@@ -130,5 +172,16 @@ namespace MixerInteractive
             return Socket.ExecuteAsync(methodName, parameters, discard);
         }
 
+
+        public virtual Task UpdateControlsAsync(SceneData data)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual Task GiveInputAsync<T>(T input)
+           where T : Input
+        {
+            throw new NotImplementedException();
+        }
     }  
 }

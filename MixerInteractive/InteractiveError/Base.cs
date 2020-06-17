@@ -14,5 +14,10 @@ namespace MixerInteractive.InteractiveError
 
             //skipped setProto
         }
+
+        public Base():base("parameterless construction")
+        {
+
+        }
     }
 }

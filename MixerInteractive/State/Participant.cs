@@ -39,5 +39,8 @@ namespace MixerInteractive.State
 
         [JsonPropertyName("anonymous")]
         public bool Anonymous { get; set; }
+
+        [JsonPropertyName("username")]
+        public string Username { get; set; }
     }
 }

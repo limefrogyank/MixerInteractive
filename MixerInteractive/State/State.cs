@@ -2,6 +2,7 @@
 using MixerInteractive.Wire;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Text.Json;
@@ -29,6 +30,9 @@ namespace MixerInteractive.State
         private Subject<Participant> _participantJoin = new Subject<Participant>();
         private Subject<Participant> _participantLeave = new Subject<Participant>();
 
+        private Subject<Group> _groupCreated = new Subject<Group>();
+        private Subject<Tuple<string,string>> _groupDeleted = new Subject<Tuple<string, string>>();
+
         public IObservable<bool> OnReady => _ready.AsObservable();
         public IObservable<Scene> OnSceneCreated => _sceneCreated.AsObservable();
         public IObservable<string> OnSceneDeleted => _sceneDeleted.AsObservable();
@@ -40,13 +44,16 @@ namespace MixerInteractive.State
 
         private Dictionary<string, Scene> _scenes = new Dictionary<string, Scene>();
         private Dictionary<string, Participant> _participants = new Dictionary<string, Participant>();
+        private Dictionary<string, Group> _groups = new Dictionary<string, Group>();
         private Dictionary<string, object> _world = new Dictionary<string, object>();
+       
 
         private ClockSync _clockSyncer;
         private long _clockDelta = 0;
         private ClientType _clientType;
 
         public Dictionary<string, Participant> Participants => _participants;
+        public Dictionary<string, Group> Groups => _groups;
 
         public State(ClientType clientType)
         {
@@ -104,13 +111,14 @@ namespace MixerInteractive.State
             _methodHandler.AddHandler("onControlCreate", method => 
             {
                 var p = (Dictionary<string, object>)method.Parameters;
+                
                 if (p.TryGetValue("sceneID", out var sceneID))
                 {
                     if (_scenes.TryGetValue((string)sceneID, out Scene scene))
                     {
                         if (p.TryGetValue("controls", out var controls))
                         {
-                            scene.OnControlsCreated((IEnumerable<IControlData>)controls);
+                            scene.OnControlsCreate((JsonElement)controls);
                         }
                     }
                 }
@@ -126,7 +134,7 @@ namespace MixerInteractive.State
                     {
                         if (p.TryGetValue("controls", out var controls))
                         {
-                            scene.OnControlsDeleted((IEnumerable<IControlData>)controls);
+                            scene.OnControlsDelete((IEnumerable<ControlData>)controls);
                         }
                     }
                 }
@@ -142,7 +150,7 @@ namespace MixerInteractive.State
                     {
                         if (p.TryGetValue("controls", out var controls))
                         {
-                            scene.OnControlsUpdated((IEnumerable<IControlData>)controls);
+                            scene.OnControlsUpdate((IEnumerable<ControlData>)controls);
                         }
                     }
                 }
@@ -159,16 +167,36 @@ namespace MixerInteractive.State
                 return null;
             });
 
-            //// Group Events
-            //this.methodHandler.addHandler('onGroupCreate', res => {
-            //    res.params.groups.forEach(group => this.onGroupCreate(group));
-            //});
-            //this.methodHandler.addHandler('onGroupDelete', res => {
-            //    this.onGroupDelete(res.params.groupID, res.params.reassignGroupID);
-            //});
-            //this.methodHandler.addHandler('onGroupUpdate', res => {
-            //    res.params.groups.forEach(group => this.onGroupUpdate(group));
-            //});
+            // Group Events
+            _methodHandler.AddHandler("onGroupCreate", method => {
+                var p = (JsonElement)method.Parameters;
+                var arr = p.GetProperty("groups").GetRawText();
+                var list = JsonSerializer.Deserialize<List<Group>>(arr);
+                foreach (var group in list)
+                {
+                    OnGroupCreate(group);
+                }
+                return null;
+            });
+
+            _methodHandler.AddHandler("onGroupDelete", method => 
+            {
+                var p = (JsonElement)method.Parameters;
+                OnGroupDelete(p.GetProperty("groupID").GetString(), p.GetProperty("reassignGroupID").GetString());
+                return null;
+            });
+            
+            _methodHandler.AddHandler("onGroupUpdate", method => 
+            {
+                var p = (JsonElement)method.Parameters;
+                var arr = p.GetProperty("groups").GetRawText();
+                var list = JsonSerializer.Deserialize<List<Group>>(arr);
+                foreach (var group in list)
+                {
+                    OnGroupUpdate(group);
+                }
+                return null;
+            });
 
             _clockSyncer.DeltaObs.Subscribe(delta =>
             {
@@ -184,6 +212,46 @@ namespace MixerInteractive.State
                 AddParticipantHandlers();
             }
 
+        }
+
+        public IEnumerable<Scene> SynchronizeScenes(IEnumerable<SceneData> data)
+        {
+            var scenes = data.Select(x=> OnSceneCreate(x));
+
+            return scenes;
+        }
+
+       
+        public Group OnGroupCreate(IGroupData data)
+        {
+            if (_groups.TryGetValue(data.GroupID, out var group))
+            {
+                OnGroupUpdate(data);
+                return group;
+            }
+                
+            group = new Group(data);
+            _groups.Add(data.GroupID, group);
+            _groupCreated.OnNext(group);
+            return group;
+        }
+
+        public void OnGroupUpdate(IGroupData data)
+        {
+            if (_groups.TryGetValue(data.GroupID, out var group))
+            {
+                group.Update(data);
+            }
+        }
+
+        public void OnGroupDelete(string groupID, string reassignGroupID)
+        {
+            if (_groups.TryGetValue(groupID, out var targetGroup))
+            {
+                targetGroup.Destroy();
+                _groups.Remove(groupID);
+                _groupDeleted.OnNext(new Tuple<string, string>(groupID, reassignGroupID));
+            }
         }
 
         private void AddParticipantHandlers()
@@ -247,6 +315,38 @@ namespace MixerInteractive.State
                 return null;
             });
 
+
+            _methodHandler.AddHandler("giveInput", method => 
+            {
+                var p = (JsonElement)method.Parameters;
+                var controlID = p.GetProperty("input").GetProperty("controlID").GetString();
+                
+                var control = GetControl(controlID);
+                if (control != null)
+                {
+                    var participantID = p.GetProperty("participantID").GetString();
+                    if (_participants.TryGetValue(participantID, out var participant))
+                    {
+                        control.ReceiveInput(p, participant);
+                    }
+                }
+
+                return null;
+            });
+        }
+
+        public Control GetControl(string id)
+        {
+            Control result = null;
+            foreach (var scene in _scenes.Values)
+            {
+                if (scene.Controls.TryGetValue(id, out var found))
+                {
+                    result = found;
+                    break;
+                }
+            }
+            return result;
         }
 
         public void Reset()
@@ -334,7 +434,7 @@ namespace MixerInteractive.State
             scene = _stateFactory.CreateScene(sceneData);
             if (sceneData.Controls != null)
             {
-                scene.OnControlsCreated(sceneData.Controls);
+                scene.OnControlsCreate(sceneData.Controls); 
             }
 
             _scenes.Add(sceneData.SceneID, scene);

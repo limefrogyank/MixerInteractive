@@ -1,14 +1,17 @@
-﻿using System;
+﻿using Microsoft.CodeAnalysis;
+using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MixerInteractive.State
 {
-    public class SceneData
+    public class SceneData 
     {
-        public string SceneID { get; set; }
-        public IEnumerable<IControlData> Controls { get; set; }
-        public Meta Meta { get; set; }
+        [JsonPropertyName("sceneID")] public string SceneID { get; set; }
+        [JsonPropertyName("controls")] public IEnumerable<JsonElement> Controls { get; set; }
+        [JsonPropertyName("meta")] public Optional<Meta> Meta { get; set; }
 
     }
 }

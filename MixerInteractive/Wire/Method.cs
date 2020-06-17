@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace MixerInteractive.Wire
@@ -23,7 +24,7 @@ namespace MixerInteractive.Wire
         public string Name { get; set; }
 
         [JsonPropertyName("params")]
-        public object Parameters { get; set; }
+        public JsonElement Parameters { get; set; }
 
         [JsonPropertyName("discard")]
         public bool Discard { get; set; } = false;
@@ -38,7 +39,7 @@ namespace MixerInteractive.Wire
 
         }
 
-        public Method(string method, object parameters, bool discard)
+        public Method(string method, JsonElement parameters, bool discard)
         {
             Name = method;
             Parameters = parameters;
@@ -48,7 +49,7 @@ namespace MixerInteractive.Wire
             Id = random.Next();
         }
 
-        public Method(string method, object parameters, bool discard, int id)
+        public Method(string method, JsonElement parameters, bool discard, int id)
         {
             Name = method;
             Parameters = parameters;

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace MixerInteractive.Wire
@@ -15,7 +16,7 @@ namespace MixerInteractive.Wire
         public string Method { get; set; }
 
         [JsonPropertyName("params")]
-        public object Params { get; set; }
+        public JsonElement Params { get; set; }
 
         [JsonPropertyName("result")]
         public Dictionary<string,object> Result { get; set; }

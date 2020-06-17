@@ -11,16 +11,24 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="auto"/>
+            <RowDefinition Height="auto"/>
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <TextBlock x:Name="debugText" Text="Test" Style="{StaticResource HeaderTextBlockStyle}"/>
-        <ListView Grid.Row="1"
+        <TextBlock x:Name="debugText" Text="Test" 
+                   
+                   Style="{StaticResource HeaderTextBlockStyle}"/>
+        <StackPanel Orientation="Horizontal" Grid.Row="1">
+            <Button Content="Turn poll on"
+                    x:Name="button1"
+                    Click="Button_Click"/>
+        </StackPanel>
+        <ListView Grid.Row="2"
                   x:Name="participantList"
                   >
             <ListView.ItemTemplate>
                 <DataTemplate>
                     <StackPanel>
-                        <TextBlock Text="{Binding UserID}" Style="{StaticResource HeaderTextBlockStyle}"/>
+                        <TextBlock Text="{Binding Username}" Style="{StaticResource HeaderTextBlockStyle}"/>
                         <TextBlock Text="{Binding ReadableConnectedAt}"/>
                         <TextBlock Text="{Binding Level}"/>
                     </StackPanel>

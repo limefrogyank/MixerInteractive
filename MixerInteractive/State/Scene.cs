@@ -4,26 +4,31 @@ using System.Linq;
 using System.Reactive.Subjects;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace MixerInteractive.State
 {
     public class Scene
     {
-        public string SceneID { get; set; }
-        public Dictionary<string, IControl> Controls { get; set; }
-        public object Groups { get; set; }
-        public Meta Meta { get; set; }
+        [JsonPropertyName("sceneID")] public string SceneID { get; set; }
+        [JsonPropertyName("controls")] public Dictionary<string, Control> Controls { get; set; } = new Dictionary<string, Control>();
+        [JsonPropertyName("groups")] public object Groups { get; set; }
+        [JsonPropertyName("meta")] public Meta Meta { get; set; }
 
         private Client _client;
         private StateFactory _stateFactory = new StateFactory();
 
-        private ISubject<IControl> _controlAdded = new Subject<IControl>();
+        private ISubject<Control> _controlAdded = new Subject<Control>();
         private ISubject<string> _controlDeleted = new Subject<string>();
+
+        public Scene()
+        { }
 
         public Scene(SceneData sceneData)
         {
             SceneID = sceneData.SceneID;
-            Meta = sceneData.Meta;
+            Meta = sceneData.Meta.HasValue ? sceneData.Meta.Value : null;
         }
 
         public void SetClient(Client client)
@@ -32,66 +37,66 @@ namespace MixerInteractive.State
             _stateFactory.SetClient(client);
         }
 
-        public IEnumerable<IControl> OnControlsCreated(IEnumerable<IControlData> controlDatas)
+        public IEnumerable<Control> OnControlsCreate(IEnumerable<JsonElement> controlDatas)
         {
-            return Controls.Values.Select(control => OnControlCreated(control));
+            return controlDatas?.Select(control => OnControlCreate(control)).ToList();
         }
 
-        private IControl OnControlCreated(IControlData controlData)
+        private Control OnControlCreate(JsonElement controlData)
         {
-            if (Controls.TryGetValue(controlData.ControlID, out var control))
+            var controlID = controlData.GetProperty("controlID").GetString();
+            if (Controls.TryGetValue(controlID, out var control))
             {
-
-                
+                OnControlUpdate(controlData);                
                 return control;
             }
-
-
-
-
+            var controlKind = controlData.GetProperty("kind").GetString();
+            control = _stateFactory.CreateControl(controlKind, controlData, this);
+            Controls.Add(control.ControlID, control);
+            _controlAdded.OnNext(control);
 
             return control;
         }
 
-        public void OnControlsDeleted(IEnumerable<IControlData> controlDatas)
+        public void OnControlsDelete(IEnumerable<ControlData> controlDatas)
         {
             foreach (var control in Controls.Values)
             {
-                OnControlDeleted(control);
+                OnControlDelete(control);
             }
         }
 
-        private void OnControlDeleted(IControlData controlData)
+        private void OnControlDelete(ControlData controlData)
         {
                 Controls.Remove(controlData.ControlID);
                 _controlDeleted.OnNext(controlData.ControlID);
         }
 
-        public void OnControlsUpdated(IEnumerable<IControlData> controlDatas)
+        public void OnControlsUpdate(IEnumerable<JsonElement> controlDatas)
         {
             foreach (var controlData in controlDatas)
             {
-                OnControlUpdated(controlData);
+                OnControlUpdate(controlData);
             }
         }
 
-        private void OnControlUpdated(IControlData controlData)
+        private void OnControlUpdate(JsonElement controlData)
         {
-            if (Controls.TryGetValue(controlData.ControlID, out var control))
+            var controlID = controlData.GetProperty("controlID").GetString();
+            if (Controls.TryGetValue(controlID, out var control))
             {
                 control.OnUpdate(controlData);                
             }
         }
-
-
+               
         public void Update(SceneData sceneData)
         {
-            if (sceneData.Meta != null)
+            if (sceneData.Meta.HasValue)
             {
                 if (this.Meta != null)
-                    Meta.Merge(sceneData.Meta);
+                    Meta.Merge(sceneData.Meta.Value);
                 else
-                    Meta = sceneData.Meta;
+                    Meta = sceneData.Meta.Value;
             }
         }
 
