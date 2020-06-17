@@ -28,9 +28,11 @@ namespace MixerInteractive.State
             switch (kind)
             {
                 case "button":
-                    control = new Button((ButtonData)values);
+                    control = new Button((ControlData)values);
                     break;
-
+                case "label":
+                    control = new Label((ControlData)values);
+                    break;
             }
 
             return control;

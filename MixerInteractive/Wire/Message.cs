@@ -19,7 +19,7 @@ namespace MixerInteractive.Wire
         public JsonElement Params { get; set; }
 
         [JsonPropertyName("result")]
-        public Dictionary<string,object> Result { get; set; }
+        public JsonElement Result { get; set; }
 
         [JsonPropertyName("seq")]
         public int Seq { get; set; }

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace MixerInteractive
@@ -13,7 +14,7 @@ namespace MixerInteractive
 
         }
 
-        public override Task GiveInputAsync<T>(T input)
+        public override Task GiveInputAsync(JsonElement input)
         {
             return ExecuteAsync("giveInput", input, false);
         }

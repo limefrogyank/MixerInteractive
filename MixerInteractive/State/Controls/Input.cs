@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace MixerInteractive.State.Controls
@@ -9,11 +10,12 @@ namespace MixerInteractive.State.Controls
     {
         [JsonPropertyName("controlID")] public string ControlID { get; set; }
         [JsonPropertyName("event")] public string Event { get; set; }
+        [JsonExtensionData] public Dictionary<string, object> ExtensionData { get; set; } = new Dictionary<string, object>();
     }
 
     public class ButtonInput : Input
     {
-        [JsonPropertyName("button")] public int Button { get; set; }
+        [JsonPropertyName("button")] public int Button { get; set; } //=> ExtensionData.ContainsKey("button") ? ((JsonElement)ExtensionData.["button"]).GetInt32() : default;
     }
       
     public class JoystickInput : Input

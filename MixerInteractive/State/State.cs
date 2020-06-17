@@ -1,4 +1,5 @@
 ﻿using MixerInteractive.Methods;
+using MixerInteractive.State.Controls;
 using MixerInteractive.Wire;
 using System;
 using System.Collections.Generic;
@@ -75,33 +76,33 @@ namespace MixerInteractive.State
             // Scene Events
             _methodHandler.AddHandler("onSceneCreate", method => 
             {
-                var p = (Dictionary<string, object>)method.Parameters;
-                if (p.TryGetValue("scenes", out var scenes))
+                var p = (JsonElement)method.Parameters;
+                if (p.TryGetProperty("scenes", out var scenes))
                 {
-                    foreach (var sceneData in (IEnumerable<SceneData>)scenes)
+                    foreach (var sceneData in scenes.EnumerateArray())
                     {
-                        OnSceneCreate(sceneData);
+                        OnSceneCreate(JsonSerializer.Deserialize<SceneData>(sceneData.GetRawText()));
                     }
                 }
                 return null;
             });
             _methodHandler.AddHandler("onSceneDelete", method => 
             {
-                var p = (Dictionary<string, object>)method.Parameters;
-                if (p.TryGetValue("sceneID", out var sceneID) && p.TryGetValue("reassignSceneID", out var reassignSceneID))
+                var p = (JsonElement)method.Parameters;
+                if (p.TryGetProperty("sceneID", out var sceneID) && p.TryGetProperty("reassignSceneID", out var reassignSceneID))
                 {
-                    OnSceneDelete((string)sceneID, reassignSceneID);
+                    OnSceneDelete(sceneID.GetString(), reassignSceneID.GetString());
                 }
                 return null;
             });
             _methodHandler.AddHandler("onSceneUpdate", method => 
             {
-                var p = (Dictionary<string, object>)method.Parameters;
-                if (p.TryGetValue("scenes", out var scenes))
+                var p = (JsonElement)method.Parameters;
+                if (p.TryGetProperty("scenes", out var scenes))
                 {
-                    foreach (var sceneData in (IEnumerable<SceneData>)scenes)
+                    foreach (var sceneData in scenes.EnumerateArray())
                     {
-                        OnSceneUpdate(sceneData);
+                        OnSceneUpdate(JsonSerializer.Deserialize<SceneData>(sceneData.GetRawText()));
                     }
                 }
                 return null;
@@ -110,15 +111,15 @@ namespace MixerInteractive.State
             // Control Events
             _methodHandler.AddHandler("onControlCreate", method => 
             {
-                var p = (Dictionary<string, object>)method.Parameters;
+                var p = (JsonElement)method.Parameters;
                 
-                if (p.TryGetValue("sceneID", out var sceneID))
+                if (p.TryGetProperty("sceneID", out var sceneID))
                 {
-                    if (_scenes.TryGetValue((string)sceneID, out Scene scene))
+                    if (_scenes.TryGetValue(sceneID.GetString(), out Scene scene))
                     {
-                        if (p.TryGetValue("controls", out var controls))
+                        if (p.TryGetProperty("controls", out var controls))
                         {
-                            scene.OnControlsCreate((JsonElement)controls);
+                            scene.OnControlsCreate(controls.EnumerateArray().Select(x=>JsonSerializer.Deserialize<ControlData>(x.GetRawText())).ToList());
                         }
                     }
                 }
@@ -127,14 +128,14 @@ namespace MixerInteractive.State
 
             _methodHandler.AddHandler("onControlDelete", method => 
             {
-                var p = (Dictionary<string, object>)method.Parameters;
-                if (p.TryGetValue("sceneID", out var sceneID))
+                var p = (JsonElement)method.Parameters;
+                if (p.TryGetProperty("sceneID", out var sceneID))
                 {
-                    if (_scenes.TryGetValue((string)sceneID, out Scene scene))
+                    if (_scenes.TryGetValue(sceneID.GetString(), out Scene scene))
                     {
-                        if (p.TryGetValue("controls", out var controls))
+                        if (p.TryGetProperty("controls", out var controls))
                         {
-                            scene.OnControlsDelete((IEnumerable<ControlData>)controls);
+                            scene.OnControlsDelete(controls.EnumerateArray().Select(x => JsonSerializer.Deserialize<ControlData>(x.GetRawText())).ToList());
                         }
                     }
                 }
@@ -143,14 +144,14 @@ namespace MixerInteractive.State
 
             _methodHandler.AddHandler("onControlUpdate", method => 
             {
-                var p = (Dictionary<string, object>)method.Parameters;
-                if (p.TryGetValue("sceneID", out var sceneID))
+                var p = (JsonElement)method.Parameters;
+                if (p.TryGetProperty("sceneID", out var sceneID))
                 {
-                    if (_scenes.TryGetValue((string)sceneID, out Scene scene))
+                    if (_scenes.TryGetValue(sceneID.GetString(), out Scene scene))
                     {
-                        if (p.TryGetValue("controls", out var controls))
+                        if (p.TryGetProperty("controls", out var controls))
                         {
-                            scene.OnControlsUpdate((IEnumerable<ControlData>)controls);
+                            scene.OnControlsUpdate(controls.EnumerateArray().Select(x => JsonSerializer.Deserialize<ControlData>(x.GetRawText())).ToList());
                         }
                     }
                 }
@@ -159,9 +160,9 @@ namespace MixerInteractive.State
 
             _methodHandler.AddHandler("onWorldUpdate", method =>
             {
-                var newWorld = (Dictionary<string, object>)method.Parameters;
-                if (newWorld.ContainsKey("scenes"))
-                    newWorld.Remove("scenes");
+                var newWorld = method.Parameters;
+//                if (newWorld.TryGetProperty("scenes", out var scenes))
+//                    newWorld.s("scenes");
 
 
                 return null;
@@ -327,7 +328,7 @@ namespace MixerInteractive.State
                     var participantID = p.GetProperty("participantID").GetString();
                     if (_participants.TryGetValue(participantID, out var participant))
                     {
-                        control.ReceiveInput(p, participant);
+                        control.ReceiveInput(JsonSerializer.Deserialize<Input>(p.GetProperty("input").GetRawText()), participant);
                     }
                 }
 

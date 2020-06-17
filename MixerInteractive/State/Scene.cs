@@ -37,21 +37,21 @@ namespace MixerInteractive.State
             _stateFactory.SetClient(client);
         }
 
-        public IEnumerable<Control> OnControlsCreate(IEnumerable<JsonElement> controlDatas)
+        public IEnumerable<Control> OnControlsCreate(IEnumerable<ControlData> controlDatas)
         {
             return controlDatas?.Select(control => OnControlCreate(control)).ToList();
         }
 
-        private Control OnControlCreate(JsonElement controlData)
+        private Control OnControlCreate(ControlData controlData)
         {
-            var controlID = controlData.GetProperty("controlID").GetString();
-            if (Controls.TryGetValue(controlID, out var control))
+           // var controlID = controlData.GetProperty("controlID").GetString();
+            if (Controls.TryGetValue(controlData.ControlID, out var control))
             {
                 OnControlUpdate(controlData);                
                 return control;
             }
-            var controlKind = controlData.GetProperty("kind").GetString();
-            control = _stateFactory.CreateControl(controlKind, controlData, this);
+            //var controlKind = controlData.GetProperty("kind").GetString();
+            control = _stateFactory.CreateControl(controlData.Kind, controlData, this);
             Controls.Add(control.ControlID, control);
             _controlAdded.OnNext(control);
 
@@ -60,7 +60,7 @@ namespace MixerInteractive.State
 
         public void OnControlsDelete(IEnumerable<ControlData> controlDatas)
         {
-            foreach (var control in Controls.Values)
+            foreach (var control in controlDatas)
             {
                 OnControlDelete(control);
             }
@@ -68,11 +68,13 @@ namespace MixerInteractive.State
 
         private void OnControlDelete(ControlData controlData)
         {
-                Controls.Remove(controlData.ControlID);
-                _controlDeleted.OnNext(controlData.ControlID);
+            //var controlID = controlData.GetProperty("controlID").GetString();
+            var controlID = controlData.ControlID;
+            Controls.Remove(controlID);
+            _controlDeleted.OnNext(controlID);
         }
 
-        public void OnControlsUpdate(IEnumerable<JsonElement> controlDatas)
+        public void OnControlsUpdate(IEnumerable<ControlData> controlDatas)
         {
             foreach (var controlData in controlDatas)
             {
@@ -80,10 +82,10 @@ namespace MixerInteractive.State
             }
         }
 
-        private void OnControlUpdate(JsonElement controlData)
+        private void OnControlUpdate(ControlData controlData)
         {
-            var controlID = controlData.GetProperty("controlID").GetString();
-            if (Controls.TryGetValue(controlID, out var control))
+            //var controlID = controlData.GetProperty("controlID").GetString();
+            if (Controls.TryGetValue(controlData.ControlID, out var control))
             {
                 control.OnUpdate(controlData);                
             }

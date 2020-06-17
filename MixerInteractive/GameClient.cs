@@ -2,6 +2,7 @@
 using MixerInteractive.Wire;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -46,29 +47,31 @@ namespace MixerInteractive
         {
             var dic = new Dictionary<string, bool>();
             dic.Add("isReady", isReady);
-            return ExecuteAsync("ready", dic, false);
+            var doc = JsonDocument.Parse(JsonSerializer.Serialize(dic));
+            return ExecuteAsync("ready", doc.RootElement, false);
         }
 
         public Task UpdateParticipantsAsync(IEnumerable<Participant> participants)
         {
             var dic = new Dictionary<string, object>();
             dic.Add("participants", participants);
-
-            return ExecuteAsync("updateParticipants", dic, false);
+            var doc = JsonDocument.Parse(JsonSerializer.Serialize(dic));
+            return ExecuteAsync("updateParticipants", doc.RootElement, false);
         }
 
         public async Task<IEnumerable<Group>> CreateGroupsAsync(IEnumerable<Group> groups)
         {
             var dic = new Dictionary<string, object>();
             dic.Add("groups", groups);
-
-            var result = await ExecuteAsync("createGroups", dic, false);
-            return JsonSerializer.Deserialize<IEnumerable<Group>>(((JsonElement)((Dictionary<string, object>)result)["groups"]).GetRawText());
+            var doc = JsonDocument.Parse(JsonSerializer.Serialize(dic));
+            var result = await ExecuteAsync("createGroups", doc.RootElement, false);
+            return ((JsonElement)result).GetProperty("groups").EnumerateArray().Select(x=> JsonSerializer.Deserialize<Group>(x.GetRawText())).ToList();
         }
 
 
-        public override Task UpdateControlsAsync(SceneData data)
+        public override Task UpdateControlsAsync(object data)
         {
+            //var doc = JsonDocument.Parse(JsonSerializer.Serialize(data));
             return this.ExecuteAsync("updateControls", data, false);
         }
     }

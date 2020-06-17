@@ -6,6 +6,7 @@ using MixerInteractive.Wire;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -73,8 +74,8 @@ namespace MixerInteractive
         public async Task<IEnumerable<Group>> GetGroupsAsync()
         {
             var result = await ExecuteAsync("getGroups", null, false);
-            var groups = JsonSerializer.Deserialize<IEnumerable<Group>>(((JsonElement)((Dictionary<string, object>)result)["groups"]).GetRawText());
-
+            //var groups = JsonSerializer.Deserialize<IEnumerable<Group>>(((JsonElement)((Dictionary<string, object>)result)["groups"]).GetRawText());
+            var groups = ((JsonElement)result).GetProperty("groups").EnumerateArray().Select(x => JsonSerializer.Deserialize<Group>(x.GetRawText())).ToList();
             return groups;
         }
 
@@ -87,7 +88,7 @@ namespace MixerInteractive
         public async Task<IEnumerable<SceneData>> GetScenesAsync()
         {
             var result = await ExecuteAsync("getScenes", null, false);
-            var scenes = JsonSerializer.Deserialize<IEnumerable<SceneData>>(((JsonElement)((Dictionary<string, object>)result)["scenes"]).GetRawText());
+            var scenes = ((JsonElement)result).GetProperty("scenes").EnumerateArray().Select(x=>JsonSerializer.Deserialize<SceneData>(x.GetRawText())).ToList();
 
             return scenes;
         }
@@ -163,8 +164,8 @@ namespace MixerInteractive
         public async Task<long> GetTime()
         {
             var result=await ExecuteAsync("getTime", null, false);
-            var p = (Dictionary<string, object>)result;
-            return ((JsonElement)p["time"]).GetInt64();            
+            var p = (JsonElement)result;
+            return p.GetProperty("time").GetInt64();            
         }
 
         public Task<object> ExecuteAsync(string methodName, object parameters, bool discard)
@@ -173,13 +174,12 @@ namespace MixerInteractive
         }
 
 
-        public virtual Task UpdateControlsAsync(SceneData data)
+        public virtual Task UpdateControlsAsync(object data)
         {
             throw new NotImplementedException();
         }
 
-        public virtual Task GiveInputAsync<T>(T input)
-           where T : Input
+        public virtual Task GiveInputAsync(JsonElement input)
         {
             throw new NotImplementedException();
         }

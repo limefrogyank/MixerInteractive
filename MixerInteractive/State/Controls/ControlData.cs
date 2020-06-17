@@ -14,5 +14,7 @@ namespace MixerInteractive.State
         [JsonPropertyName("kind")] public string Kind { get; set; }
         [JsonPropertyName("meta")] public Meta Meta { get; set; }
         [JsonPropertyName("position")] public IEnumerable<GridPlacement> Position { get; set; }
+
+        [JsonExtensionData] public Dictionary<string, object> ExtensionData { get; set; }
     }
 }

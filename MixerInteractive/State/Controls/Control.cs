@@ -21,27 +21,31 @@ namespace MixerInteractive.State
         //[JsonPropertyName("position")] public IEnumerable<GridPlacement> Position { get; set; }
         [JsonIgnore] protected Scene Scene { get; set; }
 
-        private ISubject<Control> _updated = new Subject<Control>();
-        private ISubject<Tuple<object, Participant>> _inputEvent = new Subject<Tuple<object, Participant>>();
+        protected ISubject<Control> _updated = new Subject<Control>();
+        protected ISubject<Tuple<object, Participant>> _inputEvent = new Subject<Tuple<object, Participant>>();
+
+        public Control()
+        {
+
+        }
 
         public Control(ControlData controlData)
         {
             controlData.CopyPropertiesTo(this);
         }
 
-        public void OnUpdate(JsonElement controlData)
+        public virtual void OnUpdate(ControlData controlData)
         {
-            var controlD = JsonSerializer.Deserialize<ControlData>(controlData.GetRawText());
-            this.Disabled = controlD.Disabled;
-            this.Kind = controlD.Kind;
-            this.Meta = controlD.Meta;
-            this.Position = controlD.Position;
-            this.ControlID = controlD.ControlID;
+            this.Disabled = controlData.Disabled;
+            this.Kind = controlData.Kind;
+            this.Meta = controlData.Meta;
+            this.Position = controlData.Position;
+            this.ControlID = controlData.ControlID;
 
             _updated.OnNext(this);
         }
 
-        public void ReceiveInput(object input, Participant participant)
+        public virtual void ReceiveInput(Input input, Participant participant)
         {
             _inputEvent.OnNext(new Tuple<object, Participant>(input, participant));
         }
@@ -50,19 +54,43 @@ namespace MixerInteractive.State
             where K: Input
         {
             input.ControlID = this.ControlID;
-            return this.Client.GiveInputAsync(input);
+            var doc = JsonDocument.Parse(JsonSerializer.Serialize(input));
+            return this.Client.GiveInputAsync(doc.RootElement);
         }
 
-        protected Task UpdateAttributeAsync(PropertyInfo attribute, object value)
+        public virtual Task UpdateAsync(Dictionary<string, object> data)
         {
-            ControlData packet = default;
+            if (data.ContainsKey("controlID"))
+            {
+                data.Add("controlID", this.ControlID);
+            }
 
-            packet.ControlID = this.ControlID;
-
-            attribute.SetValue(packet, value);
-
-            return this.Client.UpdateControlsAsync(new SceneData { SceneID = Scene.SceneID, Controls = new JsonElement[] {  } });
+            return this.Client.UpdateControlsAsync(new Dictionary<string, object>()
+            {
+                { "sceneID", Scene.SceneID },
+                { "controls", data
+                }
+            });
         }
+
+        protected Task UpdateAttributeAsync(string propertyName, object value)
+        {                                    
+            return this.Client.UpdateControlsAsync(new Dictionary<string, object>() 
+            {
+                { "sceneID", Scene.SceneID },
+                { "controls", new List<Dictionary<string,object>>()
+                    {
+                        new Dictionary<string,object>()
+                        {
+                            { "controlID", ControlID },
+                            { propertyName, value }
+                        }
+
+                    }
+                }
+            });
+        }
+
                 
         
     }

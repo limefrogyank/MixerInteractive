@@ -123,7 +123,7 @@ namespace MixerInteractive.UWP.Demo
 
             await _gameClient.CreateGroupsAsync(CreateGroups());
 
-            await RegisterEventsAsync(state.Item2);
+            RegisterEvents(state.Item2);
 
             base.OnNavigatedTo(e);
         }
@@ -143,13 +143,20 @@ namespace MixerInteractive.UWP.Demo
             return groups;
         }
 
-        private async Task RegisterEventsAsync(IEnumerable<Scene> scenes)
+        private void RegisterEvents(IEnumerable<Scene> scenes)
         {
             var pollOnScene = scenes.FirstOrDefault(x => x.SceneID == "default");
-            //foreach (var control in pollOnScene.Controls.Values.Where(x=>x.Kind == "button"))
-            //{
-                
-            //}
+            foreach (var control in pollOnScene.Controls.Values.Where(x => x.Kind == "button"))
+            {
+                (control as MixerInteractive.State.Controls.Button).OnMouseDown.Subscribe(x =>
+                {
+                    debugText.Text = $"{x.Item1.Event}: {x.Item2.Username}"; 
+                });
+                (control as MixerInteractive.State.Controls.Button).OnMouseUp.Subscribe(x =>
+                {
+                    debugText.Text = $"{x.Item1.Event}: {x.Item2.Username}";
+                });
+            }
         }
 
         private async void Button_Click(object sender, RoutedEventArgs e)
